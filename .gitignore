@@ -1,0 +1,6 @@
+contacts.csv
+data/
+exports/
+.DS_Store
+node_modules/
+*.log

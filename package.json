@@ -1,0 +1,12 @@
+{
+  "name": "contacts-cleanup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only app for reviewing and cleaning an Outlook contacts CSV.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
