@@ -9,6 +9,7 @@ const state = {
   index: 0,
   duplicates: [],
   saveTimer: null,
+  exportUrls: [],
 };
 
 const importantFields = [
@@ -27,6 +28,7 @@ const editFields = [
 const el = {
   csvInput: document.querySelector("#csvInput"),
   exportBtn: document.querySelector("#exportBtn"),
+  exportDownloads: document.querySelector("#exportDownloads"),
   message: document.querySelector("#message"),
   positionLabel: document.querySelector("#positionLabel"),
   reviewedLabel: document.querySelector("#reviewedLabel"),
@@ -580,25 +582,37 @@ function exportReview() {
     if (status === "delete") deletionRows.push(row);
     if (status !== "delete" && status !== "merged") cleanRows.push(state.headers.map((header) => record[header] || ""));
   }
-  downloadCsv(`contacts-clean-${timestamp}.csv`, cleanRows);
-  downloadCsv(`contacts-reviewed-${timestamp}.csv`, allRows);
-  downloadCsv(`contacts-marked-for-deletion-${timestamp}.csv`, [reviewedHeaders, ...deletionRows]);
-  downloadText(`contacts-reviewed-colour-coded-${timestamp}.html`, buildColorCodedHtml(reviewedHeaders, allRows.slice(1)), "text/html");
-  el.message.textContent = `Exported ${cleanRows.length - 1} clean contacts and ${deletionRows.length} deletion records.`;
+  const files = [
+    makeDownloadFile(`contacts-clean-${timestamp}.csv`, csvText(cleanRows), "text/csv", "Clean CSV"),
+    makeDownloadFile(`contacts-reviewed-${timestamp}.csv`, csvText(allRows), "text/csv", "Review ledger CSV"),
+    makeDownloadFile(`contacts-marked-for-deletion-${timestamp}.csv`, csvText([reviewedHeaders, ...deletionRows]), "text/csv", "Deletion CSV"),
+    makeDownloadFile(`contacts-reviewed-colour-coded-${timestamp}.html`, buildColorCodedHtml(reviewedHeaders, allRows.slice(1)), "text/html", "Colour-coded HTML"),
+  ];
+  renderDownloadLinks(files);
+  el.message.textContent = `Prepared ${cleanRows.length - 1} clean contacts and ${deletionRows.length} deletion records. Download each file below.`;
 }
 
-function downloadCsv(fileName, rows) {
-  downloadText(fileName, rows.map((row) => row.map(csvEscape).join(",")).join("\n"), "text/csv");
+function csvText(rows) {
+  return rows.map((row) => row.map(csvEscape).join(",")).join("\n");
 }
 
-function downloadText(fileName, content, type) {
+function makeDownloadFile(fileName, content, type, label) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
+  return { fileName, url, label };
+}
+
+function renderDownloadLinks(files) {
+  for (const url of state.exportUrls) URL.revokeObjectURL(url);
+  state.exportUrls = files.map((file) => file.url);
+  el.exportDownloads.hidden = false;
+  el.exportDownloads.innerHTML = `
+    <strong>Export files ready</strong>
+    <div class="download-grid">
+      ${files.map((file) => `<a href="${file.url}" download="${escapeHtml(file.fileName)}">${escapeHtml(file.label)}</a>`).join("")}
+    </div>
+    <p class="small-meta">Browsers may block several automatic downloads at once, so these are normal click-to-download links.</p>
+  `;
 }
 
 function buildColorCodedHtml(headers, rows) {
