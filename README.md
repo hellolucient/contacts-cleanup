@@ -1,6 +1,6 @@
 # Contacts Cleanup
 
-Contacts Cleanup is a local-only app for reviewing an old Outlook contacts CSV without editing the original file.
+Contacts Cleanup is a local-only app for reviewing an old Outlook contacts CSV without editing the original file. It is designed for privacy-sensitive contact cleanup: all source data, review decisions, and exports stay on the user's machine.
 
 ## Privacy
 
@@ -30,6 +30,39 @@ Then open:
 http://localhost:4173
 ```
 
+## Review Workflow
+
+- Use the top-bar buttons to mark the current record as `Keep`, `Maybe`, `Delete`, or `Merged`.
+- After a decision, the app auto-advances to the next unreviewed record.
+- The previous/next arrows move one record at a time for manual inspection.
+- `Resume` jumps to the first unreviewed record.
+- Reviewed cards change color by status.
+- `Undo` appears on reviewed records when the status or edits can be reset.
+- Review notes are saved and included in exports.
+- Field edits are saved separately from the original CSV and applied to exports.
+
+## Duplicate Tools
+
+When possible duplicates are detected, the duplicate panel can:
+
+- Review a merge into a duplicate
+- Keep a duplicate as its own record
+- Delete a duplicate
+- Mark a suggestion as not a duplicate
+- Apply the current review note to visible duplicates
+- Delete the current record plus visible duplicates with `Delete + Dupes`
+
+The merge tool lets you build a final editable record from the current record and duplicate source values.
+
+## Exports
+
+The export button creates timestamped files in `exports/`:
+
+- `contacts-clean-...csv`: final cleaned Outlook-style CSV. It uses the original CSV columns, applies field edits, and excludes records marked `delete` or `merged`.
+- `contacts-reviewed-colour-coded-...html`: color-coded audit view for reviewing statuses.
+- `contacts-reviewed-...csv`: full review ledger with review status, review color, review note, source row, contact ID, and contact fields.
+- `contacts-marked-for-deletion-...csv`: records marked for deletion.
+
 ## Features
 
 - Review contacts one card at a time
@@ -37,5 +70,6 @@ http://localhost:4173
 - Auto-advance to the next unreviewed record after decisions
 - Browse manually by record number
 - Detect, dismiss, merge, keep, or delete possible duplicates
+- Apply notes to possible duplicates
 - Save field edits separately from the original CSV
-- Export reviewed CSV, deletion-only CSV, and color-coded HTML
+- Export a clean CSV, reviewed CSV, deletion-only CSV, and color-coded HTML

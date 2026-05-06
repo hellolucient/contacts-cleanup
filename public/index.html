@@ -57,6 +57,7 @@
             <button class="status-btn keep" data-status="keep">Keep</button>
             <button class="status-btn maybe" data-status="maybe">Maybe</button>
             <button class="status-btn delete" data-status="delete">Delete</button>
+            <button id="deleteDupesBtn" class="status-btn delete" hidden>Delete + Dupes</button>
             <button class="status-btn merged" data-status="merged">Merged</button>
           </div>
         </nav>
@@ -83,6 +84,10 @@
               <span>Review note</span>
               <textarea id="reviewNote" rows="3" placeholder="Optional note for this contact"></textarea>
             </label>
+            <div class="note-actions">
+              <button id="applyNoteBtn" class="record-action" hidden>Apply note to duplicates</button>
+              <span id="applyNoteStatus" class="small-meta"></span>
+            </div>
 
             <details class="edit-panel">
               <summary>Edit fields for export</summary>

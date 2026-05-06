@@ -68,6 +68,7 @@ const el = {
   mergeTitle: document.querySelector("#mergeTitle"),
   mergeFields: document.querySelector("#mergeFields"),
   confirmMergeBtn: document.querySelector("#confirmMergeBtn"),
+  deleteDupesBtn: document.querySelector("#deleteDupesBtn"),
   rowMeta: document.querySelector("#rowMeta"),
   displayName: document.querySelector("#displayName"),
   companyLine: document.querySelector("#companyLine"),
@@ -75,6 +76,8 @@ const el = {
   currentUndoBtn: document.querySelector("#currentUndoBtn"),
   primaryFields: document.querySelector("#primaryFields"),
   reviewNote: document.querySelector("#reviewNote"),
+  applyNoteBtn: document.querySelector("#applyNoteBtn"),
+  applyNoteStatus: document.querySelector("#applyNoteStatus"),
   editFields: document.querySelector("#editFields"),
   saveEditsBtn: document.querySelector("#saveEditsBtn"),
   saveEditsStatus: document.querySelector("#saveEditsStatus"),
@@ -230,6 +233,8 @@ function renderContact(payload) {
   el.statusPill.textContent = status;
   el.statusPill.className = `status-pill ${statusClass(status)}`;
   el.currentUndoBtn.hidden = !contact.canUndo;
+  el.applyNoteBtn.hidden = !payload.duplicates.length;
+  el.deleteDupesBtn.hidden = !payload.duplicates.length;
   document.querySelector(".contact-card").className = `contact-card ${statusClass(status)}`;
   el.reviewNote.value = contact.decision.reviewNote || "";
 
@@ -296,6 +301,23 @@ async function saveDecision(status = null, options = {}) {
   }
   const fresh = await api(`/api/contact?index=${currentIndex}`);
   renderContact(fresh);
+}
+
+async function deleteCurrentAndVisibleDuplicates() {
+  if (!state.contact) return;
+  const currentIndex = state.index;
+  const result = await api("/api/delete-current-and-duplicates", {
+    method: "POST",
+    body: JSON.stringify({
+      currentId: state.contact.id,
+      duplicateIds: state.duplicates.map((item) => item.id),
+      currentNote: el.reviewNote.value,
+      currentEdits: gatherEdits(),
+    }),
+  });
+  updateStats(result.stats);
+  updateUndo(result.canUndo);
+  await loadNextUnreviewed(currentIndex);
 }
 
 async function saveCurrentEdits() {
@@ -507,6 +529,41 @@ async function dismissDuplicate(duplicateId) {
   await loadContact(state.index);
 }
 
+async function applyNoteToDuplicates() {
+  if (!state.contact || !state.duplicates.length) return;
+  const note = el.reviewNote.value.trim();
+  if (!note) {
+    el.applyNoteStatus.textContent = "Add a note first";
+    window.setTimeout(() => {
+      el.applyNoteStatus.textContent = "";
+    }, 1600);
+    return;
+  }
+
+  window.clearTimeout(state.saveTimer);
+  el.applyNoteBtn.disabled = true;
+  el.applyNoteStatus.textContent = "Applying...";
+  try {
+    await saveDecision(null, { silent: true });
+    const result = await api("/api/apply-note-to-duplicates", {
+      method: "POST",
+      body: JSON.stringify({
+        currentId: state.contact.id,
+        duplicateIds: state.duplicates.map((item) => item.id),
+        reviewNote: note,
+      }),
+    });
+    updateStats(result.stats);
+    el.applyNoteStatus.textContent = `Applied to ${result.changed}`;
+    await loadContact(state.index);
+  } finally {
+    el.applyNoteBtn.disabled = false;
+    window.setTimeout(() => {
+      el.applyNoteStatus.textContent = "";
+    }, 1600);
+  }
+}
+
 function scheduleSave() {
   window.clearTimeout(state.saveTimer);
   state.saveTimer = window.setTimeout(() => saveDecision(null, { silent: true }), 700);
@@ -545,6 +602,10 @@ el.nextBtn.addEventListener("click", () => loadContact(Math.min(state.total - 1,
 el.resumeBtn.addEventListener("click", () => loadNextUnreviewed(-1));
 el.jumpInput.addEventListener("change", () => loadContact(Math.max(0, Math.min(state.total - 1, Number(el.jumpInput.value) - 1))));
 el.reviewNote.addEventListener("input", scheduleSave);
+el.applyNoteBtn.addEventListener("click", (event) => {
+  event.preventDefault();
+  applyNoteToDuplicates();
+});
 el.saveEditsBtn.addEventListener("click", (event) => {
   event.preventDefault();
   saveCurrentEdits();
@@ -562,6 +623,10 @@ document.querySelectorAll('.topbar .status-btn[data-status]').forEach((button) =
       if (firstDuplicate) openMergeDialog(firstDuplicate.id);
       return;
     }
+    if (button.dataset.status === "delete") {
+      saveDecision("delete", { advance: true });
+      return;
+    }
     saveDecision(button.dataset.status, { advance: true });
   });
 });
@@ -574,6 +639,8 @@ el.mergeForm.addEventListener("submit", (event) => {
     confirmMerge();
   }
 });
+
+el.deleteDupesBtn.addEventListener("click", () => deleteCurrentAndVisibleDuplicates());
 
 document.addEventListener("keydown", (event) => {
   if (event.target.matches("input, textarea, select")) return;
@@ -589,7 +656,7 @@ el.exportBtn.addEventListener("click", async () => {
   try {
     const output = await api("/api/export", { method: "POST", body: "{}" });
     el.exportMessage.hidden = false;
-    el.exportMessage.textContent = `Exported reviewed CSV, deletion list, and colour-coded HTML. Delete-marked contacts: ${output.deleteCount}. Files: ${output.reviewedPath}, ${output.deletePath}, and ${output.htmlPath}`;
+    el.exportMessage.textContent = `Exported clean CSV, deletion list, reviewed CSV, and colour-coded HTML. Clean contacts: ${output.cleanCount}. Delete-marked contacts: ${output.deleteCount}. Files: ${output.cleanPath}, ${output.deletePath}, ${output.reviewedPath}, and ${output.htmlPath}`;
   } finally {
     el.exportBtn.disabled = false;
   }

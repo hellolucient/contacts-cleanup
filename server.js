@@ -369,6 +369,7 @@ function exportReview() {
     ...state.headers,
   ];
   const deletionRows = [];
+  const cleanRows = [state.headers];
   const allRows = [reviewedHeaders];
 
   for (const contact of state.contacts) {
@@ -385,16 +386,28 @@ function exportReview() {
     ];
     allRows.push(row);
     if (status === "delete") deletionRows.push(row);
+    if (status !== "delete" && status !== "merged") {
+      cleanRows.push(state.headers.map((header) => record[header] || ""));
+    }
   }
 
   const reviewedPath = path.join(EXPORT_DIR, `contacts-reviewed-${timestamp}.csv`);
   const deletePath = path.join(EXPORT_DIR, `contacts-marked-for-deletion-${timestamp}.csv`);
+  const cleanPath = path.join(EXPORT_DIR, `contacts-clean-${timestamp}.csv`);
   const htmlPath = path.join(EXPORT_DIR, `contacts-reviewed-colour-coded-${timestamp}.html`);
   fs.writeFileSync(reviewedPath, allRows.map((row) => row.map(csvEscape).join(",")).join("\n"));
   fs.writeFileSync(deletePath, [reviewedHeaders, ...deletionRows].map((row) => row.map(csvEscape).join(",")).join("\n"));
+  fs.writeFileSync(cleanPath, cleanRows.map((row) => row.map(csvEscape).join(",")).join("\n"));
   fs.writeFileSync(htmlPath, buildColorCodedHtml(reviewedHeaders, allRows.slice(1)));
 
-  return { reviewedPath, deletePath, htmlPath, deleteCount: deletionRows.length };
+  return {
+    reviewedPath,
+    deletePath,
+    cleanPath,
+    htmlPath,
+    deleteCount: deletionRows.length,
+    cleanCount: cleanRows.length - 1,
+  };
 }
 
 function buildColorCodedHtml(headers, rows) {
@@ -579,6 +592,51 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/delete-current-and-duplicates") {
+      const body = await readBody(req);
+      const current = state.contacts.find((item) => item.id === body.currentId);
+      if (!current) {
+        sendJson(res, { error: "Contact not found" }, 404);
+        return;
+      }
+
+      const duplicateIds = Array.isArray(body.duplicateIds) ? body.duplicateIds : [];
+      const ids = [current.id, ...duplicateIds.filter((id) => id !== current.id)];
+      const now = new Date().toISOString();
+      const changes = [];
+
+      for (const id of ids) {
+        const contact = state.contacts.find((item) => item.id === id);
+        if (!contact) continue;
+        const before = getDecision(id);
+        const existing = before || {};
+        const after = {
+          ...existing,
+          status: "delete",
+          reviewNote:
+            id === current.id
+              ? String(body.currentNote || existing.reviewNote || "")
+              : existing.reviewNote || `Marked for deletion with ${current.id} / source row ${current.rowNumber}.`,
+          edits: id === current.id ? body.currentEdits || existing.edits || {} : existing.edits || {},
+          updatedAt: now,
+        };
+        decisions[id] = after;
+        changes.push({ id, before, after });
+      }
+
+      if (changes.length) {
+        rememberChange(
+          "Delete current and duplicates",
+          state.contacts.findIndex((item) => item.id === current.id),
+          changes,
+        );
+        saveDecisions(decisions);
+      }
+
+      sendJson(res, { ok: true, changed: changes.length, stats: stats(), canUndo: true });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/merge-records") {
       const body = await readBody(req);
       const source = state.contacts.find((item) => item.id === body.sourceId);
@@ -707,6 +765,48 @@ const server = http.createServer(async (req, res) => {
       if (!decisions._notDuplicates.includes(key)) decisions._notDuplicates.push(key);
       saveDecisions(decisions);
       sendJson(res, { ok: true });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/apply-note-to-duplicates") {
+      const body = await readBody(req);
+      const current = state.contacts.find((item) => item.id === body.currentId);
+      if (!current) {
+        sendJson(res, { error: "Contact not found" }, 404);
+        return;
+      }
+
+      const note = String(body.reviewNote || "");
+      const duplicateIds = Array.isArray(body.duplicateIds) ? body.duplicateIds : [];
+      const now = new Date().toISOString();
+      const changes = [];
+
+      for (const id of duplicateIds) {
+        const duplicate = state.contacts.find((item) => item.id === id);
+        if (!duplicate || duplicate.id === current.id) continue;
+        const before = getDecision(duplicate.id);
+        const existing = before || {};
+        const after = {
+          ...existing,
+          status: existing.status || "unreviewed",
+          reviewNote: note,
+          edits: existing.edits || {},
+          updatedAt: now,
+        };
+        decisions[duplicate.id] = after;
+        changes.push({ id: duplicate.id, before, after });
+      }
+
+      if (changes.length) {
+        rememberChange(
+          "Apply note to duplicates",
+          state.contacts.findIndex((item) => item.id === current.id),
+          changes,
+        );
+        saveDecisions(decisions);
+      }
+
+      sendJson(res, { ok: true, changed: changes.length, stats: stats() });
       return;
     }
 
