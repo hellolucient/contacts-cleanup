@@ -1,6 +1,10 @@
 contacts.csv
 data/
 exports/
+local-node/contacts.csv
+local-node/data/
+local-node/exports/
 .DS_Store
 node_modules/
 *.log
+*.local.csv
