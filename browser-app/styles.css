@@ -73,6 +73,14 @@ h3 { margin-bottom: 0; font-size: 1rem; }
   padding: 14px;
 }
 .download-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.export-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  color: var(--muted);
+  font-size: .88rem;
+}
+.export-summary span:last-child { grid-column: 1 / -1; }
 .download-grid a {
   display: grid;
   place-items: center;

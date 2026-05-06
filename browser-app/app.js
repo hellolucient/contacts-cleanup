@@ -569,6 +569,7 @@ function search() {
 
 function exportReview() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const counts = stats();
   const reviewedHeaders = ["Review Status", "Review Color", "Review Note", "Source Row", "Contact ID", ...state.headers];
   const allRows = [reviewedHeaders];
   const deletionRows = [];
@@ -588,8 +589,15 @@ function exportReview() {
     makeDownloadFile(`contacts-marked-for-deletion-${timestamp}.csv`, csvText([reviewedHeaders, ...deletionRows]), "text/csv", "Deletion CSV"),
     makeDownloadFile(`contacts-reviewed-colour-coded-${timestamp}.html`, buildColorCodedHtml(reviewedHeaders, allRows.slice(1)), "text/html", "Colour-coded HTML"),
   ];
-  renderDownloadLinks(files);
-  el.message.textContent = `Prepared ${cleanRows.length - 1} clean contacts and ${deletionRows.length} deletion records. Download each file below.`;
+  const cleanContacts = cleanRows.length - 1;
+  renderDownloadLinks(files, {
+    totalContacts: state.contacts.length,
+    cleanContacts,
+    spreadsheetRows: cleanRows.length,
+    deleteCount: counts.delete,
+    mergedCount: counts.merged,
+  });
+  el.message.textContent = `Prepared ${cleanContacts} clean contacts. Clean CSV has ${cleanRows.length} total rows including the header.`;
 }
 
 function csvText(rows) {
@@ -602,12 +610,19 @@ function makeDownloadFile(fileName, content, type, label) {
   return { fileName, url, label };
 }
 
-function renderDownloadLinks(files) {
+function renderDownloadLinks(files, summary) {
   for (const url of state.exportUrls) URL.revokeObjectURL(url);
   state.exportUrls = files.map((file) => file.url);
   el.exportDownloads.hidden = false;
   el.exportDownloads.innerHTML = `
     <strong>Export files ready</strong>
+    <div class="export-summary">
+      <span>Loaded contacts: <strong>${summary.totalContacts.toLocaleString()}</strong></span>
+      <span>Deleted: <strong>${summary.deleteCount.toLocaleString()}</strong></span>
+      <span>Merged/excluded: <strong>${summary.mergedCount.toLocaleString()}</strong></span>
+      <span>Clean contacts: <strong>${summary.cleanContacts.toLocaleString()}</strong></span>
+      <span>Clean CSV rows incl. header: <strong>${summary.spreadsheetRows.toLocaleString()}</strong></span>
+    </div>
     <div class="download-grid">
       ${files.map((file) => `<a href="${file.url}" download="${escapeHtml(file.fileName)}">${escapeHtml(file.label)}</a>`).join("")}
     </div>
