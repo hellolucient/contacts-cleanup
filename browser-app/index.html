@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contacts Cleanup - Browser Only</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <p class="eyebrow">Local-only</p>
+            <h1>Contacts Cleanup</h1>
+          </div>
+          <button id="exportBtn" class="primary" disabled>Export</button>
+        </div>
+
+        <section class="privacy-box">
+          <strong>Your contacts stay on this computer.</strong>
+          <span>No upload, no account, no analytics. After this page loads, you can disconnect from the internet and keep working.</span>
+        </section>
+
+        <label class="file-picker">
+          <span>Choose Outlook CSV</span>
+          <input id="csvInput" type="file" accept=".csv,text/csv" />
+        </label>
+
+        <div class="progress">
+          <div class="progress-row">
+            <span id="positionLabel">No file loaded</span>
+            <span id="reviewedLabel">0 reviewed</span>
+          </div>
+          <div class="progress-track"><div id="progressBar"></div></div>
+        </div>
+
+        <div class="search-form">
+          <input id="searchInput" type="search" placeholder="Search names, email, phone, company" disabled />
+          <select id="statusFilter" disabled>
+            <option value="">All</option>
+            <option value="unreviewed">Unreviewed</option>
+            <option value="keep">Keep</option>
+            <option value="delete">Delete</option>
+            <option value="maybe">Maybe</option>
+            <option value="merged">Merged</option>
+          </select>
+        </div>
+
+        <div id="searchResults" class="search-results"></div>
+
+        <div class="stats-grid">
+          <div><strong id="statUnreviewed">0</strong><span>Unreviewed</span></div>
+          <div><strong id="statKeep">0</strong><span>Keep</span></div>
+          <div><strong id="statDelete">0</strong><span>Delete</span></div>
+          <div><strong id="statMaybe">0</strong><span>Maybe</span></div>
+        </div>
+      </aside>
+
+      <section class="review-area">
+        <nav class="topbar">
+          <div class="review-actions">
+            <button id="prevBtn" class="nav-button" disabled>‹</button>
+            <input id="jumpInput" type="number" min="1" value="1" disabled />
+            <button id="nextBtn" class="nav-button" disabled>›</button>
+            <button id="resumeBtn" class="status-btn" disabled>Resume</button>
+            <button class="status-btn keep" data-status="keep" disabled>Keep</button>
+            <button class="status-btn maybe" data-status="maybe" disabled>Maybe</button>
+            <button class="status-btn delete" data-status="delete" disabled>Delete</button>
+            <button id="deleteDupesBtn" class="status-btn delete" hidden>Delete + Dupes</button>
+            <button class="status-btn merged" data-status="merged" disabled>Merged</button>
+          </div>
+        </nav>
+
+        <div id="message" class="message">Choose a CSV to begin. Nothing will be uploaded.</div>
+
+        <div class="content-grid">
+          <article class="contact-card">
+            <div class="card-header">
+              <div>
+                <p id="rowMeta" class="eyebrow">No record</p>
+                <h2 id="displayName">Load contacts</h2>
+                <p id="companyLine" class="subtle"></p>
+              </div>
+              <div class="record-actions">
+                <span id="statusPill" class="status-pill">unreviewed</span>
+                <button id="currentUndoBtn" class="record-action undo" hidden>Undo</button>
+              </div>
+            </div>
+
+            <div id="primaryFields" class="primary-fields"></div>
+
+            <label class="note-box">
+              <span>Review note</span>
+              <textarea id="reviewNote" rows="3" placeholder="Optional note for this contact" disabled></textarea>
+            </label>
+            <div class="note-actions">
+              <button id="applyNoteBtn" class="record-action" hidden>Apply note to duplicates</button>
+              <span id="applyNoteStatus" class="small-meta"></span>
+            </div>
+
+            <details class="edit-panel">
+              <summary>Edit fields for export</summary>
+              <div id="editFields" class="edit-fields"></div>
+              <div class="edit-actions">
+                <button id="saveEditsBtn" class="record-action" disabled>Save edits</button>
+                <span id="saveEditsStatus" class="small-meta"></span>
+              </div>
+            </details>
+          </article>
+
+          <aside class="duplicates-panel">
+            <div class="panel-header">
+              <h3>Possible Duplicates</h3>
+              <span id="duplicateCount">0</span>
+            </div>
+            <div id="duplicates"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="mergeDialog" class="merge-dialog">
+      <form method="dialog" id="mergeForm">
+        <div class="merge-header">
+          <div>
+            <p class="eyebrow">Merge Review</p>
+            <h2 id="mergeTitle">Merge contacts</h2>
+          </div>
+          <button class="nav-button" value="cancel">×</button>
+        </div>
+        <div id="mergeFields" class="merge-fields"></div>
+        <div class="merge-footer">
+          <button class="status-btn" value="cancel">Cancel</button>
+          <button id="confirmMergeBtn" class="status-btn merged" value="default">Save final and mark duplicate merged</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

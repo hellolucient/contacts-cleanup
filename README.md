@@ -1,24 +1,42 @@
 # Contacts Cleanup
 
-Contacts Cleanup is a local-only app for reviewing an old Outlook contacts CSV without editing the original file. It is designed for privacy-sensitive contact cleanup: all source data, review decisions, and exports stay on the user's machine.
+Contacts Cleanup is a local-first app for reviewing an old Outlook contacts CSV without editing the original file. It is designed for privacy-sensitive contact cleanup: source data, review decisions, and exports stay on the user's machine.
+
+The repo now has two app tracks:
+
+- `local-node/`: the current working developer/local version. This runs a tiny local server on `localhost`, reads a CSV path from your machine, saves review decisions to local files, and writes exports to `local-node/exports/`.
+- `browser-app/`: a static no-upload browser version. The user chooses a CSV in the browser, the app processes it in that browser session, and exports download back to the same computer. There is no backend.
 
 ## Privacy
 
 - Contacts are read from a local CSV on your machine.
-- The app runs on `localhost`.
 - There are no analytics, third-party scripts, accounts, or cloud uploads.
 - Review decisions and exports are saved locally and ignored by Git.
 - Do not commit real contact CSVs, `data/`, or `exports/`.
+- The browser-only app can keep working after the page has loaded, even if the user disconnects from the internet.
 
-## Run
+## Browser-Only App
 
-Use an environment variable:
+Open the static app:
+
+```text
+browser-app/index.html
+```
+
+Then choose an Outlook CSV with the file picker. The CSV is parsed in the browser. Review decisions are stored in that browser's local storage using a fingerprint of the selected file name, size, and modified date.
+
+Use this track when you want the most privacy-friendly option for non-technical users: a website can serve the app files, but contact data is not uploaded to that website.
+
+## Local Node App
+
+From `local-node/`, use an environment variable:
 
 ```sh
+cd local-node
 CONTACTS_CSV="/absolute/path/to/contacts.csv" npm start
 ```
 
-Or place a local file named `contacts.csv` in this folder:
+Or place a local file named `contacts.csv` in `local-node/`:
 
 ```sh
 npm start
@@ -29,6 +47,10 @@ Then open:
 ```text
 http://localhost:4173
 ```
+
+## Repo Safety
+
+Before committing, check that Git is only seeing app files. Real contact data should stay in ignored paths such as `data/`, `exports/`, local CSV files, or browser downloads.
 
 ## Review Workflow
 
@@ -56,7 +78,7 @@ The merge tool lets you build a final editable record from the current record an
 
 ## Exports
 
-The export button creates timestamped files in `exports/`:
+The export button creates timestamped files. In `local-node/`, they are written to `local-node/exports/`. In `browser-app/`, they download through the browser:
 
 - `contacts-clean-...csv`: final cleaned Outlook-style CSV. It uses the original CSV columns, applies field edits, and excludes records marked `delete` or `merged`.
 - `contacts-reviewed-colour-coded-...html`: color-coded audit view for reviewing statuses.
